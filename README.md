@@ -33,20 +33,26 @@ We are now going to build an english language model for the IMDB corpus using a 
 Our source LM is the wikitext103 LM created by Stephen Merity @ Salesforce research. Link to dataset The language model for wikitext103 (AWD LSTM) has been pre-trained and the weights can be downloaded here: Link. Our target LM is the IMDB LM.
 
 # Language model
-It is fairly straightforward to create a new language model using the fastai library. Our model will have a backbone and a custom head. The backbone in our case is the IMDB LM pre-trained with wikitext and the custom head is a linear classifier. In this section we will focus on the backbone LM and the next section will talk about the classifier custom head.
+It is fairly straightforward to create a new language model using PyTorch or fastai. But we have designed our model in a way that our model will have a backbone which is nothing but IMDB LM pre-trained with wikitext
 
-bptt (also known traditionally in NLP LM as ngrams) in fastai LMs is approximated to a std. deviation around 70, by perturbing the sequence length on a per-batch basis.
+bptt (also known traditionally in NLP LM as ngrams) in fastai LMs is approximated to a std. deviation around 70, by perturbing the sequence length on a per-batch basis because in NLP we cannot shuffle inputs and we have to maintain statefulness.
 
 Since we are predicting words using ngrams, we want our next batch to line up with the end-points of the previous mini-batch's items. batch-size is constant and but the fastai library expands and contracts bptt each mini-batch using a clever stochastic implementation of a batch.
 
 The goal of the LM is to learn to predict a word/token given a preceeding set of words(tokens). We take all the movie reviews in both the 90k training set and 10k validation set and concatenate them to form long strings of tokens. In fastai, we use the LanguageModelLoader to create a data loader which makes it easy to create and use bptt sized mini batches. The LanguageModelLoader takes a concatenated string of tokens and returns a loader.
 
-We have a special modeldata object class for LMs called LanguageModelData to which we can pass the training and validation loaders and get in return the model itself.
+Fastai has a special modeldata object class for LMs called LanguageModelData to which we can pass the training and validation loaders and get in return the model itself.
 
 We setup the dropouts for the model - these values have been chosen after experimentation. If you need to update them for custom LMs, you can change the weighting factor (0.7 here) based on the amount of data you have. For more data, you can reduce dropout factor and for small datasets, you can reduce overfitting by choosing a higher dropout factor. No other dropout value requires tuning.
 
 We first tune the last embedding layer so that the missing tokens initialized with mean weights get tuned properly. So we freeze everything except the last layer.
 
 We also keep track of the accuracy metric.
+
+We set learning rates and fit our IMDB LM. We first run one epoch to tune the last layer which contains the embedding weights. This should help the missing tokens in the wikitext103 learn better weights.
+
+Note that we print out accuracy and keep track of how often we end up predicting the target word correctly. While this is a good metric to check, it is not part of our loss function as it can get quite bumpy. We only minimize cross-entropy loss in the LM.
+
+The exponent of the cross-entropy loss is called the perplexity of the LM. (low perplexity is better).
 
 
